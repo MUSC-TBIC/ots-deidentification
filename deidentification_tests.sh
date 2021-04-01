@@ -19,49 +19,76 @@ fi
 
 export LOG_DIR=${OUTPUT_ROOT}/logs
 mkdir -p ${LOG_DIR}
-		      
+                      
 if [[ -n $CORPUS2014 ]]; then
     echo "2014 i2b2 Corpus"
     export SHORT_CORPUS=2014_train
+    ####
+    ## Clinacuity's CliniDeID
+    ####
     if [[ -n $CLINIDEID_ROOT ]]; then
-	echo "CliniDeID"
-	export SHORT_SYSTEM=clinideid
-	cd ${CLINIDEID_ROOT}
-	export OUTPUT_DIR=${OUTPUT_ROOT}/clinideid_cli
-	mkdir -p ${OUTPUT_DIR}
-	time ./runCliniDeIDcommandLine.sh \
-	     --inputFile --inputDir "$CORPUS2014/train/txt" \
-	     --outputFile --outputDir ${OUTPUT_DIR} \
-	     --level beyond \
-	     --outputTypes filtered \
-	     1> ${LOG_ROOT}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
-	     2> ${LOG_ROOT}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
+        echo "CliniDeID"
+        export SHORT_SYSTEM=clinideid
+        cd ${CLINIDEID_ROOT}
+        export OUTPUT_DIR=${OUTPUT_ROOT}/clinideid_cli
+        mkdir -p ${OUTPUT_DIR}
+        time ./runCliniDeIDcommandLine.sh \
+             --inputFile --inputDir "$CORPUS2014/train/txt" \
+             --outputFile --outputDir ${OUTPUT_DIR} \
+             --level beyond \
+             --outputTypes filtered \
+             1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+             2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
     else
-	echo "Skipping CliniDeID"
+        echo "Skipping CliniDeID"
     fi
     ####
-    ## NLM Scrubber
+    ## NLM's Scrubber
     ####
     if [[ -n $SCRUBBER_ROOT ]]; then
-	echo "NLM Scrubber"
-	export SHORT_SYSTEM=scrubber
-	cd ${SCRUBBER_ROOT}
-	export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
-	mkdir -p ${OUTPUT_DIR}
-	#time ./scrubber.19.0403.lnx \
-	#    $OTS_DIR/nlm-scrubber/i2b2_2014_train.conf \
-	#    1> $LOG_DIR/scrubber_2014_train.stdout \
-	#    2> $LOG_DIR/scrubber_2014_train.stderr
-	if [[ -z $CORPUS_UTILS ]]; then
-	    echo "Skipping nlm2brat conversion because the variable \$CORPUS_UTILS is not set.  It is available here:  https://github.com/MUSC-TBIC/corpus-utils.git"
-	else
-	    python3 ${CORPUS_UTILS}/nlm-scrubber/nlm2brat.py \
-		--raw-dir ${CORPUS2014}/train/txt \
-		--processed-dir ${OUTPUT_DIR} \
-		--output-dir ${OUTPUT_DIR}_brat
-	fi
+        echo "NLM Scrubber"
+        export SHORT_SYSTEM=scrubber
+        cd ${SCRUBBER_ROOT}
+        export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
+        mkdir -p ${OUTPUT_DIR}
+        time ./scrubber.19.0403.lnx \
+            $OTS_DIR/nlm-scrubber/i2b2_2014_train.conf \
+            1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+            2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
+        if [[ -z $CORPUS_UTILS ]]; then
+            echo "Skipping nlm2brat conversion because the variable \$CORPUS_UTILS is not set.  It is available here:  https://github.com/MUSC-TBIC/corpus-utils.git"
+        else
+            python3 ${CORPUS_UTILS}/nlm-scrubber/nlm2brat.py \
+                --raw-dir ${CORPUS2014}/train/txt \
+                --processed-dir ${OUTPUT_DIR} \
+                --output-dir ${OUTPUT_DIR}_brat
+        fi
     else
-	echo "Skipping NLM Scrubber"
+        echo "Skipping NLM Scrubber"
+    fi
+    ####
+    ## NeuroNER
+    ####
+    if [[ -n $NEURONER_BIN ]] && [[ -n $NEURONER_ROOT ]]; then
+        echo "NeuroNER"
+        export SHORT_SYSTEM=neuroner
+        export TMP_CORPUS=/tmp/neuroner_tmp_corpus/${SHORT_CORPUS}
+        mkdir -p $TMP_CORPUS
+        cp $CORPUS2014/train/txt/*.txt ${TMP_CORPUS}/test/.
+        export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
+        mkdir -p ${OUTPUT_DIR}
+        cd ${NEURONER_ROOT}
+        time ${NEURONER_BIN}/neuroner \
+            --train_model=False \
+            --use_pretrained_model=True \
+            --dataset_text_folder=${TMP_CORPUS} \
+            --pretrained_model_folder=${NEURONER_ROOT}/trained_models/i2b2_2014_glove_spacy_bioes \
+            --output_folder=${OUTPUT_DIR} \
+            1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+            2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
+        echo "    The temporary folders created under '/tmp/neuroner_tmp_corpus' can be deleted."
+    else
+        echo "Skipping NeuroNER"
     fi
 
 else
