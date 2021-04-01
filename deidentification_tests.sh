@@ -17,17 +17,65 @@ else
     echo "Using '${OUTPUT_ROOT}' as root directory for output"
 fi
 
+if [[ -z $ORG_FILE ]]; then
+    export ORG_FILE=/dev/null
+fi
+
 export LOG_DIR=${OUTPUT_ROOT}/logs
 mkdir -p ${LOG_DIR}
-                      
+
+print_section() {
+    depth=$1
+    header=$2
+    cl_prefix=""
+    org_prefix="* "
+    if [ $depth -eq 2 ]; then
+	cl_prefix=" -- "
+	org_prefix="** "
+    fi
+    if [ $depth -eq 3 ]; then
+	cl_prefix="    - "
+	org_prefix="*** "
+    fi
+    echo "${cl_prefix}$header"
+    echo "${org_prefix}$header" >> ${ORG_FILE}
+}
+
+run_neuroner() {
+    SHORT_CORPUS=$1
+    print_section 2 "NeuroNER (${SHORT_CORPUS})"
+    ##echo " -- NeuroNER (${SHORT_CORPUS})"
+    ##echo " -- NeuroNER (${SHORT_CORPUS})" >> ${ORG_FILE}
+    export SHORT_SYSTEM=neuroner
+    export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
+    mkdir -p ${OUTPUT_DIR}
+    ## NeuroNER requires a very specific directory structure for its
+    ## input directory. We need to copy the source corpus files into
+    ## NeuroNER's preferred tree.
+    TMP_CORPUS_ROOT=/tmp/neuroner_tmp_corpus
+    TMP_CORPUS=${TMP_CORPUS_ROOT}/${SHORT_CORPUS}
+    mkdir -p $TMP_CORPUS/test
+    CORPUS_ROOT=$2
+    cp $CORPUS_ROOT/*.txt ${TMP_CORPUS}/test/.
+    cd ${NEURONER_ROOT}
+    ( time ${NEURONER_BIN}/neuroner \
+        --train_model=False \
+        --use_pretrained_model=True \
+        --dataset_text_folder=${TMP_CORPUS} \
+        --pretrained_model_folder=${NEURONER_ROOT}/trained_models/i2b2_2014_glove_spacy_bioes \
+        --output_folder=${OUTPUT_DIR} \
+        1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+        2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
+    echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
+}
+
 if [[ -n $CORPUS2014 ]]; then
-    echo "2014 i2b2 Corpus"
-    export SHORT_CORPUS=2014_train
+    print_section 1 "2014 i2b2 Corpus"
     ####
     ## Clinacuity's CliniDeID
     ####
     if [[ -n $CLINIDEID_ROOT ]]; then
-        echo "CliniDeID"
+        print_section 2 "CliniDeID"
         export SHORT_SYSTEM=clinideid
         cd ${CLINIDEID_ROOT}
         export OUTPUT_DIR=${OUTPUT_ROOT}/clinideid_cli
@@ -40,13 +88,13 @@ if [[ -n $CORPUS2014 ]]; then
              1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
              2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
     else
-        echo "Skipping CliniDeID"
+        print_section 2 "Skipping CliniDeID"
     fi
     ####
     ## NLM's Scrubber
     ####
     if [[ -n $SCRUBBER_ROOT ]]; then
-        echo "NLM Scrubber"
+        print_section 2 "NLM Scrubber"
         export SHORT_SYSTEM=scrubber
         cd ${SCRUBBER_ROOT}
         export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
@@ -64,45 +112,60 @@ if [[ -n $CORPUS2014 ]]; then
                 --output-dir ${OUTPUT_DIR}_brat
         fi
     else
-        echo "Skipping NLM Scrubber"
+        print_section 2 "Skipping NLM Scrubber"
     fi
     ####
     ## NeuroNER
     ####
     if [[ -n $NEURONER_BIN ]] && [[ -n $NEURONER_ROOT ]]; then
-        echo "NeuroNER"
-        export SHORT_SYSTEM=neuroner
-        export TMP_CORPUS=/tmp/neuroner_tmp_corpus/${SHORT_CORPUS}
-        mkdir -p $TMP_CORPUS
-        cp $CORPUS2014/train/txt/*.txt ${TMP_CORPUS}/test/.
-        export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
-        mkdir -p ${OUTPUT_DIR}
-        cd ${NEURONER_ROOT}
-        time ${NEURONER_BIN}/neuroner \
-            --train_model=False \
-            --use_pretrained_model=True \
-            --dataset_text_folder=${TMP_CORPUS} \
-            --pretrained_model_folder=${NEURONER_ROOT}/trained_models/i2b2_2014_glove_spacy_bioes \
-            --output_folder=${OUTPUT_DIR} \
-            1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
-            2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
-        echo "    The temporary folders created under '/tmp/neuroner_tmp_corpus' can be deleted."
+	run_neuroner \
+	    2014_train \
+	    $CORPUS2014/train/txt
+	run_neuroner \
+	    2014_test \
+	    $CORPUS2014/test/txt
     else
-        echo "Skipping NeuroNER"
+        print_section 2 "Skipping NeuroNER"
     fi
 
 else
-    echo "Skipping 2014 i2b2 Corpus"
+    print_section 1 "Skipping 2014 i2b2 Corpus"
 fi
 
 if [[ -n $CORPUS2016 ]]; then
-    echo "2016 i2b2 Corpus"
+    print_section 2 "2016 i2b2 Corpus"
+    ####
+    ## NeuroNER
+    ####
+    if [[ -n $NEURONER_BIN ]] && [[ -n $NEURONER_ROOT ]]; then
+	run_neuroner \
+	    2016_train \
+	    $CORPUS2016/train/txt
+	run_neuroner \
+	    2016_test \
+	    $CORPUS2016/test/txt
+    else
+        print_section 2 "Skipping NeuroNER"
+    fi
 else
-    echo "Skipping 2016 i2b2 Corpus"
+    print_section 1 "Skipping 2016 i2b2 Corpus"
 fi
 
 if [[ -n $CORPUS2006 ]]; then
-    echo "2006 i2b2 Corpus"
+    print_section 1 "2006 i2b2 Corpus"
+    ####
+    ## NeuroNER
+    ####
+    if [[ -n $NEURONER_BIN ]] && [[ -n $NEURONER_ROOT ]]; then
+	run_neuroner \
+	    2006_train \
+	    $CORPUS2006/train/txt
+	run_neuroner \
+	    2006_test \
+	    $CORPUS2006/test/txt
+    else
+        print_section 2 "Skipping NeuroNER"
+    fi
 else
-    echo "Skipping 2006 i2b2 Corpus"
+    print_section 1 "Skipping 2006 i2b2 Corpus"
 fi
