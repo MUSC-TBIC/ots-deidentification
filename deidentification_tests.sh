@@ -91,6 +91,30 @@ run_neuroner() {
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
 }
 
+run_philter_ucsf() {
+    SHORT_CORPUS=$1
+    CORPUS_ROOT=$2
+    print_section 2 "UCSF's Philter"
+    export SHORT_SYSTEM=philter
+    cd ${PHILTER_ROOT}
+    export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}/${SHORT_CORPUS}
+    ## Philter needs a clean directory with only text files in it.
+    TMP_CORPUS_ROOT=/tmp/philter_tmp_corpus
+    TMP_CORPUS=${TMP_CORPUS_ROOT}/${SHORT_CORPUS}
+    mkdir -p $TMP_CORPUS
+    cp $CORPUS_ROOT/*.txt ${TMP_CORPUS}/.
+    ## Trailing slash is required for the input and output directories
+    mkdir -p ${OUTPUT_DIR}
+    ( time python3 -m philter_ucsf \
+        -i ${TMP_CORPUS}/ \
+        -o ${OUTPUT_DIR}/ \
+        -f ./configs/philter_delta.json \
+        --prod=True \
+        1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+        2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
+    echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
+}
+
 run_physionet_deid() {
     SHORT_CORPUS=$1
     CORPUS_ROOT=$2
@@ -180,6 +204,19 @@ if [[ -n $CORPUS2014 ]]; then
     else
         print_section 2 "Skipping PhysioNet's deid"
     fi
+    ####
+    ## UCSF's Philter
+    ####
+    if [[ -n $PHILTER_ROOT ]]; then
+        run_philter_ucsf \
+            2014_train \
+	    $CORPUS2014/train/txt
+        run_philter_ucsf \
+            2014_test \
+            $CORPUS2014/test/txt
+    else
+        print_section 2 "Skipping UCSF's Philter"
+    fi
 
 else
     print_section 1 "Skipping 2014 i2b2 Corpus"
@@ -228,6 +265,19 @@ if [[ -n $CORPUS2016 ]]; then
     else
         print_section 2 "Skipping PhysioNet's deid"
     fi
+    ####
+    ## UCSF's Philter
+    ####
+    if [[ -n $PHILTER_ROOT ]]; then
+        run_philter_ucsf \
+            2016_train \
+	    $CORPUS2016/train/txt
+        run_philter_ucsf \
+            2016_test \
+            $CORPUS2016/test/txt
+    else
+        print_section 2 "Skipping UCSF's Philter"
+    fi
 else
     print_section 1 "Skipping 2016 i2b2 Corpus"
 fi
@@ -274,6 +324,19 @@ if [[ -n $CORPUS2006 ]]; then
             $CORPUS2006/test/txt
     else
         print_section 2 "Skipping PhysioNet's deid"
+    fi
+    ####
+    ## UCSF's Philter
+    ####
+    if [[ -n $PHILTER_ROOT ]]; then
+        run_philter_ucsf \
+            2006_train \
+	    $CORPUS2006/train/txt
+        run_philter_ucsf \
+            2006_test \
+            $CORPUS2006/test/txt
+    else
+        print_section 2 "Skipping UCSF's Philter"
     fi
 else
     print_section 1 "Skipping 2006 i2b2 Corpus"
