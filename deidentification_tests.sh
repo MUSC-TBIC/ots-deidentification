@@ -41,6 +41,29 @@ print_section() {
     echo "${org_prefix}$header" >> ${ORG_FILE}
 }
 
+run_mist() {
+    SHORT_CORPUS=$1
+    CORPUS_ROOT=$2
+    print_section 2 "MIST"
+    export SHORT_SYSTEM=mist
+    cd ${MAT_PKG_HOME}
+    export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}/${SHORT_CORPUS}
+    mkdir -p ${OUTPUT_DIR}
+    ( time ${MAT_PKG_HOME}/bin/MATEngine \
+        --task 'AMIA Deidentification' \
+        --workflow Demo \
+        --steps 'zone,tag' \
+        --tagger_local \
+        --input_dir ${CORPUS_ROOT} \
+        --input_file_re ".*[.]txt" \
+        --input_file_type raw \
+        --output_dir ${OUTPUT_DIR} \
+        --output_file_type mat-json \
+        --output_fsuff ".json" \
+        1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+        2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
+}
+
 run_scrubber() {
     SHORT_CORPUS=$1
     CORPUS_ROOT=$2
@@ -63,6 +86,26 @@ run_scrubber() {
             --processed-dir ${OUTPUT_DIR}/${SHORT_CORPUS}_nphi \
             --output-dir ${OUTPUT_DIR}/${SHORT_CORPUS}_brat
     fi
+}
+
+run_clinideid() {
+    SHORT_CORPUS=$1
+    CORPUS_ROOT=$2
+    FILTER_LEVEL=$3
+    print_section 2 "Clinacuity's CliniDeID (${SHORT_CORPUS})"
+    export SHORT_SYSTEM=clinideid
+    export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}/${SHORT_CORPUS}
+    mkdir -p ${OUTPUT_DIR}
+    cd ${CLINIDEID_ROOT}
+    ( time ./runCliniDeIDcommandLine.sh \
+        --inputFile \
+        --inputDir ${CORPUS_ROOT} \
+        --outputFile \
+        --outputDir ${OUTPUT_DIR} \
+        --level ${FILTER_LEVEL} \
+        --outputTypes filtered \
+        1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
+        2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
 }
 
 run_neuroner() {
@@ -148,20 +191,29 @@ if [[ -n $CORPUS2014 ]]; then
     ## Clinacuity's CliniDeID
     ####
     if [[ -n $CLINIDEID_ROOT ]]; then
-        print_section 2 "CliniDeID"
-        export SHORT_SYSTEM=clinideid
-        cd ${CLINIDEID_ROOT}
-        export OUTPUT_DIR=${OUTPUT_ROOT}/clinideid_cli
-        mkdir -p ${OUTPUT_DIR}
-        time ./runCliniDeIDcommandLine.sh \
-             --inputFile --inputDir "$CORPUS2014/train/txt" \
-             --outputFile --outputDir ${OUTPUT_DIR} \
-             --level beyond \
-             --outputTypes filtered \
-             1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
-             2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr
+        run_clinideid \
+            2014_train \
+            $CORPUS2014/train/txt \
+            beyond
+        run_clinideid \
+            2014_test \
+            $CORPUS2014/test/txt \
+            beyond
     else
-        print_section 2 "Skipping CliniDeID"
+        print_section 2 "Skipping Clinacuity's CliniDeID"
+    fi
+    ####
+    ## MIST
+    ####
+    if [[ -n $MAT_PKG_HOME ]]; then
+        run_mist \
+            2014_train \
+            $CORPUS2014/train/txt
+        run_mist \
+            2014_test \
+            $CORPUS2014/test/txt
+    else
+        print_section 2 "Skipping MIST"
     fi
     ####
     ## NLM's Scrubber
@@ -210,7 +262,7 @@ if [[ -n $CORPUS2014 ]]; then
     if [[ -n $PHILTER_ROOT ]]; then
         run_philter_ucsf \
             2014_train \
-	    $CORPUS2014/train/txt
+            $CORPUS2014/train/txt
         run_philter_ucsf \
             2014_test \
             $CORPUS2014/test/txt
@@ -224,6 +276,34 @@ fi
 
 if [[ -n $CORPUS2016 ]]; then
     print_section 1 "2016 i2b2 Corpus"
+    ####
+    ## Clinacuity's CliniDeID
+    ####
+    if [[ -n $CLINIDEID_ROOT ]]; then
+        run_clinideid \
+            2016_train \
+            $CORPUS2016/train/txt \
+            beyond
+        run_clinideid \
+            2016_test \
+            $CORPUS2016/test/txt \
+            beyond
+    else
+        print_section 2 "Skipping Clinacuity's CliniDeID"
+    fi
+    ####
+    ## MIST
+    ####
+    if [[ -n $MAT_PKG_HOME ]]; then
+        run_mist \
+            2016_train \
+            $CORPUS2016/train/txt
+        run_mist \
+            2016_test \
+            $CORPUS2016/test/txt
+    else
+        print_section 2 "Skipping MIST"
+    fi
     ####
     ## NLM's Scrubber
     ####
@@ -271,7 +351,7 @@ if [[ -n $CORPUS2016 ]]; then
     if [[ -n $PHILTER_ROOT ]]; then
         run_philter_ucsf \
             2016_train \
-	    $CORPUS2016/train/txt
+            $CORPUS2016/train/txt
         run_philter_ucsf \
             2016_test \
             $CORPUS2016/test/txt
@@ -284,6 +364,34 @@ fi
 
 if [[ -n $CORPUS2006 ]]; then
     print_section 1 "2006 i2b2 Corpus"
+    ####
+    ## Clinacuity's CliniDeID
+    ####
+    if [[ -n $CLINIDEID_ROOT ]]; then
+        run_clinideid \
+            2006_train \
+            $CORPUS2006/train/txt \
+            beyond
+        run_clinideid \
+            2006_test \
+            $CORPUS2006/test/txt \
+            beyond
+    else
+        print_section 2 "Skipping Clinacuity's CliniDeID"
+    fi
+    ####
+    ## MIST
+    ####
+    if [[ -n $MAT_PKG_HOME ]]; then
+        run_mist \
+            2006_train \
+            $CORPUS2006/train/txt
+        run_mist \
+            2006_test \
+            $CORPUS2006/test/txt
+    else
+        print_section 2 "Skipping MIST"
+    fi
     ####
     ## NLM's Scrubber
     ####
@@ -331,7 +439,7 @@ if [[ -n $CORPUS2006 ]]; then
     if [[ -n $PHILTER_ROOT ]]; then
         run_philter_ucsf \
             2006_train \
-	    $CORPUS2006/train/txt
+            $CORPUS2006/train/txt
         run_philter_ucsf \
             2006_test \
             $CORPUS2006/test/txt
