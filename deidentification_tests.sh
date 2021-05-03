@@ -146,6 +146,23 @@ run_philter_ucsf() {
     TMP_CORPUS=${TMP_CORPUS_ROOT}/${SHORT_CORPUS}
     mkdir -p $TMP_CORPUS
     cp $CORPUS_ROOT/*.txt ${TMP_CORPUS}/.
+    ## A handful of files cause Philter to stall. We need to check if
+    ## they're present in this run and remove them, if so.
+    if [[ ${SHORT_CORPUS} == "2006_train" ]]; then
+        for i in 174.txt 210.txt 215.txt 270.txt 277.txt 285.txt \
+                 322.txt 398.txt 47.txt 54.txt 68.txt 93.txt; do \
+            if [[ -f "${TMP_CORPUS}/$i" ]]; then
+                rm "${TMP_CORPUS}/$i"
+            fi
+        done
+    fi
+    if [[ ${SHORT_CORPUS} == "2006_test" ]]; then
+        for i in 437.txt 458.txt; do \
+            if [[ -f "${TMP_CORPUS}/$i" ]]; then
+                rm "${TMP_CORPUS}/$i"
+            fi
+        done
+    fi
     ## Trailing slash is required for the input and output directories
     mkdir -p ${OUTPUT_DIR}
     ( time python3 -m philter_ucsf \
@@ -169,7 +186,7 @@ run_physionet_deid() {
     ## PhysioNet's deid can only run on one file at a time and it must
     ## end in .text
     TMP_CORPUS_ROOT=/tmp/physionet_tmp_corpus
-    TMP_CORPUS=${TMP_CORPUS_ROOT}
+    TMP_CORPUS=${TMP_CORPUS_ROOT}/${SHORT_CORPUS}
     mkdir -p $TMP_CORPUS
     ( time for i in $CORPUS_ROOT/*.txt; do
         FILEBASE="$(basename $i .txt)"; \
