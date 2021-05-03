@@ -181,7 +181,7 @@ run_physionet_deid() {
     print_section 2 "PhysioNet's deid (${SHORT_CORPUS})"
     export SHORT_SYSTEM=physionet_deid
     cd ${PHYSIONET_DEID_ROOT}
-    export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
+    export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}/${SHORT_CORPUS}
     mkdir -p ${OUTPUT_DIR}
     ## PhysioNet's deid can only run on one file at a time and it must
     ## end in .text
