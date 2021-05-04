@@ -43,32 +43,40 @@ print_section() {
 
 run_etude() {
     ## Variables passed as arguments
-    sys_suffix=$1
+    shared_suffix=""
+    sys_suffix="${shared_suffix}$1"
     ## Variables fully determinable from other variables
     score_key="i2b2 14/16"
     sys_config="${OTS_DIR}/etude_confs/${SHORT_SYSTEM}.conf"
     ref_config="${OTS_DIR}/etude_confs/${SHORT_CORPUS}.conf"
     ## Variables determined relative to other variables
-    if [[ "${SHORT_CORPUS}" == "2014_train" || \
+    if [[ "${SHORT_CORPUS}" == "2006_train" || \
+	"${SHORT_CORPUS}" == "2006_test" ]]; then
+	ref_dir=${CORPUS_ROOT}/../xml
+	ref_suffix="${shared_suffix}.xml"
+	ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
+    elif [[ "${SHORT_CORPUS}" == "2014_train" || \
 	"${SHORT_CORPUS}" == "2014_test" || \
 	"${SHORT_CORPUS}" == "2016_train" || \
 	"${SHORT_CORPUS}" == "2016_test" ]]; then
 	ref_dir=${CORPUS_ROOT}/../xml
-	ref_suffix="0-01.xml"
+	ref_suffix="${shared_suffix}.xml"
 	ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
     elif [ "${SHORT_CORPUS}" == "mimic" ]; then
 	ref_dir=${CORPUS_ROOT}/../xml
     fi
     ###################################
     print_section 3 "Annotation Counts"
+    print_section 3 "ls ${ref_dir}/${ref_suffix}"
+    print_section 3 "ls ${OUTPUT_DIR}/${sys_suffix}"
     python ${ETUDE_DIR}/etude.py \
-	--print-counts \
-	--no-metrics \
+    	--print-counts \
+    	--no-metrics \
     	--reference-input "${OUTPUT_DIR}" \
     	--reference-config "${sys_config}" \
     	--by-type \
     	--file-suffix "${sys_suffix}" \
-	--pretty-print
+    	--pretty-print
     ###################################
     print_section 3 "Evaluation"
     python ${ETUDE_DIR}/etude.py \
@@ -149,7 +157,7 @@ run_clinideid() {
         1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     run_etude \
-	"0-01.filtered-system-output.xml"
+	".filtered-system-output.xml"
 }
 
 run_neuroner() {
