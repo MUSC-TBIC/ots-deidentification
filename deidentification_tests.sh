@@ -65,14 +65,21 @@ run_etude() {
     elif [ "${SHORT_CORPUS}" == "mimic" ]; then
 	ref_dir=${CORPUS_ROOT}/../xml
     fi
+    if [[ "${SHORT_SYSTEM}" == "neuroner" ]]; then
+	sys_dir=`ls -d ${OUTPUT_DIR}/${SHORT_CORPUS}_*`"/brat/test"
+    elif [[ "${SHORT_SYSTEM}" == "scrubber" ]]; then
+	sys_dir="${OUTPUT_DIR}/${SHORT_CORPUS}_brat"
+    else
+	sys_dir="${OUTPUT_DIR}"
+    fi
     ###################################
     print_section 3 "Annotation Counts"
     print_section 3 "ls ${ref_dir}/${ref_suffix}"
-    print_section 3 "ls ${OUTPUT_DIR}/${sys_suffix}"
+    print_section 3 "ls ${sys_dir}/${sys_suffix}"
     python ${ETUDE_DIR}/etude.py \
     	--print-counts \
     	--no-metrics \
-    	--reference-input "${OUTPUT_DIR}" \
+    	--reference-input "${sys_dir}" \
     	--reference-config "${sys_config}" \
     	--by-type \
     	--file-suffix "${sys_suffix}" \
@@ -83,7 +90,7 @@ run_etude() {
     	--reference-input "${ref_dir}" \
     	--reference-config "${ref_config}" \
     	--score-key "${score_key}" \
-    	--test-input "${OUTPUT_DIR}" \
+    	--test-input "${sys_dir}" \
     	--test-config "${sys_config}" \
     	--collapse-all-patterns \
     	--by-type \
@@ -136,6 +143,9 @@ run_scrubber() {
             --processed-dir ${OUTPUT_DIR}/${SHORT_CORPUS}_nphi \
             --output-dir ${OUTPUT_DIR}/${SHORT_CORPUS}_brat
     fi
+    ####
+    run_etude \
+	".ann"
 }
 
 run_clinideid() {
@@ -184,6 +194,8 @@ run_neuroner() {
         1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
+    run_etude \
+	".ann"
 }
 
 run_philter_ucsf() {
@@ -225,6 +237,8 @@ run_philter_ucsf() {
         1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
+    run_etude \
+	".xml"
 }
 
 run_physionet_deid() {
