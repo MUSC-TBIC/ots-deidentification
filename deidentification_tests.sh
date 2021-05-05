@@ -257,15 +257,20 @@ run_physionet_deid() {
     ( time for i in $CORPUS_ROOT/*.txt; do
         FILEBASE="$(basename $i .txt)"; \
             TMP_FILE="$TMP_CORPUS/$FILEBASE"; \
-            cp $CORPUS_ROOT/$FILEBASE.txt $TMP_FILE.text; \
+    	    echo "START_OF_RECORD=1||||1||||" > $TMP_FILE.text; \
+            cat $CORPUS_ROOT/$FILEBASE.txt >> $TMP_FILE.text; \
+    	    echo "||||END_OF_RECORD" >> $TMP_FILE.text; \
             perl deid.pl $TMP_FILE deid-output.config \
             1>> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
             2>> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr; \
             cp $TMP_FILE.phi $OUTPUT_DIR/.; \
+            cp $TMP_FILE.text $OUTPUT_DIR/.; \
             cp $TMP_FILE.res $OUTPUT_DIR/.; \
             cp $TMP_FILE.info $OUTPUT_DIR/.; \
             done ) 2>> $ORG_FILE
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
+    run_etude \
+	".phi"
 }
 
 if [[ -n $CORPUS2014 ]]; then
