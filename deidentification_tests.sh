@@ -55,6 +55,11 @@ run_etude() {
 	ref_dir=${CORPUS_ROOT}/../xml
 	ref_suffix="${shared_suffix}.xml"
 	ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
+    elif [[ "${SHORT_CORPUS}" == "2006_nTrain" || \
+	"${SHORT_CORPUS}" == "2006_nTest" ]]; then
+	ref_dir=${CORPUS_ROOT}/../xml_normed
+	ref_suffix="${shared_suffix}.xml"
+	ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
     elif [[ "${SHORT_CORPUS}" == "2014_train" || \
 	"${SHORT_CORPUS}" == "2014_test" || \
 	"${SHORT_CORPUS}" == "2016_train" || \
@@ -62,11 +67,18 @@ run_etude() {
 	ref_dir=${CORPUS_ROOT}/../xml
 	ref_suffix="${shared_suffix}.xml"
 	ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
+    elif [[ "${SHORT_CORPUS}" == "2014_nTrain" || \
+	"${SHORT_CORPUS}" == "2014_nTest" || \
+	"${SHORT_CORPUS}" == "2016_nTrain" || \
+	"${SHORT_CORPUS}" == "2016_nTest" ]]; then
+	ref_dir=${CORPUS_ROOT}/../xml_normed
+	ref_suffix="${shared_suffix}.xml"
+	ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
     elif [ "${SHORT_CORPUS}" == "mimic" ]; then
 	ref_dir=${CORPUS_ROOT}/../xml
     fi
     if [[ "${SHORT_SYSTEM}" == "neuroner" ]]; then
-	sys_dir=`ls -d ${OUTPUT_DIR}/${SHORT_CORPUS}_*`"/brat/test"
+	sys_dir=`ls -dt ${OUTPUT_DIR}/${SHORT_CORPUS}_* | head -n 1`"/brat/test"
     elif [[ "${SHORT_SYSTEM}" == "scrubber" ]]; then
 	sys_dir="${OUTPUT_DIR}/${SHORT_CORPUS}_brat"
     else
@@ -76,7 +88,7 @@ run_etude() {
     print_section 3 "Annotation Counts"
     print_section 3 "ls ${ref_dir}/${ref_suffix}"
     print_section 3 "ls ${sys_dir}/${sys_suffix}"
-    python ${ETUDE_DIR}/etude.py \
+    ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
     	--print-counts \
     	--no-metrics \
     	--reference-input "${sys_dir}" \
@@ -86,7 +98,7 @@ run_etude() {
     	--pretty-print
     ###################################
     print_section 3 "Evaluation"
-    python ${ETUDE_DIR}/etude.py \
+    ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
     	--reference-input "${ref_dir}" \
     	--reference-config "${ref_config}" \
     	--score-key "${score_key}" \
@@ -138,7 +150,7 @@ run_scrubber() {
         echo "Skipping nlm2brat conversion because the variable \$CORPUS_UTILS is not set.  It is available here:  https://github.com/MUSC-TBIC/corpus-utils.git"
     else
         mkdir -p ${OUTPUT_DIR}/${SHORT_CORPUS}_brat
-        python3.6 ${CORPUS_UTILS}/nlm-scrubber/nlm2brat.py \
+        ${ETUDE_BIN}/python3 ${CORPUS_UTILS}/nlm-scrubber/nlm2brat.py \
             --raw-dir ${CORPUS_ROOT} \
             --processed-dir ${OUTPUT_DIR}/${SHORT_CORPUS}_nphi \
             --output-dir ${OUTPUT_DIR}/${SHORT_CORPUS}_brat
@@ -229,7 +241,7 @@ run_philter_ucsf() {
     fi
     ## Trailing slash is required for the input and output directories
     mkdir -p ${OUTPUT_DIR}
-    ( time python3 -m philter_ucsf \
+    ( time ${PHILTER_BIN}/python3 -m philter_ucsf \
         -i ${TMP_CORPUS}/ \
         -o ${OUTPUT_DIR}/ \
         -f ./configs/philter_delta.json \
@@ -279,6 +291,7 @@ if [[ -n $CORPUS2014 ]]; then
     ## Clinacuity's CliniDeID
     ####
     if [[ -n $CLINIDEID_ROOT ]]; then
+        ## Original Corpora
         run_clinideid \
             2014_train \
             $CORPUS2014/train/txt \
@@ -307,6 +320,7 @@ if [[ -n $CORPUS2014 ]]; then
     ## NLM's Scrubber
     ####
     if [[ -n $SCRUBBER_ROOT ]]; then
+        ## Original Corpora
         run_scrubber \
             2014_train \
             $CORPUS2014/train/txt \
@@ -315,6 +329,15 @@ if [[ -n $CORPUS2014 ]]; then
             2014_test \
             $CORPUS2014/test/txt \
             i2b2_2014_test.conf
+        ## Normalized Date Corpora
+        run_scrubber \
+            2014_nTrain \
+            $CORPUS2014/train/txt_normed \
+            i2b2_2014_nTrain.conf
+        run_scrubber \
+            2014_nTest \
+            $CORPUS2014/test/txt_normed \
+            i2b2_2014_nTest.conf
     else
         print_section 2 "Skipping NLM Scrubber"
     fi
@@ -396,6 +419,7 @@ if [[ -n $CORPUS2016 ]]; then
     ## NLM's Scrubber
     ####
     if [[ -n $SCRUBBER_ROOT ]]; then
+        ## Original Corpus
         run_scrubber \
             2016_train \
             $CORPUS2016/train/txt \
@@ -404,6 +428,15 @@ if [[ -n $CORPUS2016 ]]; then
             2016_test \
             $CORPUS2016/test/txt \
             i2b2_2016_test.conf
+        ## Normalized Date Corpus
+        run_scrubber \
+            2016_nTrain \
+            $CORPUS2016/train/txt_normed \
+            i2b2_2016_nTrain.conf
+        run_scrubber \
+            2016_nTest \
+            $CORPUS2016/test/txt_normed \
+            i2b2_2016_nTest.conf
     else
         print_section 2 "Skipping NLM Scrubber"
     fi
@@ -484,6 +517,7 @@ if [[ -n $CORPUS2006 ]]; then
     ## NLM's Scrubber
     ####
     if [[ -n $SCRUBBER_ROOT ]]; then
+        ## Original Corpus
         run_scrubber \
             2006_train \
             $CORPUS2006/train/txt \
@@ -492,6 +526,15 @@ if [[ -n $CORPUS2006 ]]; then
             2006_test \
             $CORPUS2006/test/txt \
             i2b2_2006_test.conf
+        ## Normalized Date Corpus
+        run_scrubber \
+            2006_nTrain \
+            $CORPUS2006/train/txt_normed \
+            i2b2_2006_nTrain.conf
+        run_scrubber \
+            2006_nTest \
+            $CORPUS2006/test/txt_normed \
+            i2b2_2006_nTest.conf
     else
         print_section 2 "Skipping NLM Scrubber"
     fi
