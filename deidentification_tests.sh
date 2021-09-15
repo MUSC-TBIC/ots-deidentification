@@ -51,63 +51,64 @@ run_etude() {
     ref_config="${OTS_DIR}/etude_confs/${SHORT_CORPUS}.conf"
     ## Variables determined relative to other variables
     if [[ "${SHORT_CORPUS}" == "2006_train" || \
-	"${SHORT_CORPUS}" == "2006_test" ]]; then
-	ref_dir=${CORPUS_ROOT}/../xml
-	ref_suffix="${shared_suffix}.xml"
-	ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
+        "${SHORT_CORPUS}" == "2006_test" ]]; then
+        ref_dir=${CORPUS_ROOT}/../xml
+        ref_suffix="${shared_suffix}.xml"
+        ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
     elif [[ "${SHORT_CORPUS}" == "2006_nTrain" || \
-	"${SHORT_CORPUS}" == "2006_nTest" ]]; then
-	ref_dir=${CORPUS_ROOT}/../xml_normed
-	ref_suffix="${shared_suffix}.xml"
-	ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
+        "${SHORT_CORPUS}" == "2006_nTest" ]]; then
+        ref_dir=${CORPUS_ROOT}/../xml_normed
+        ref_suffix="${shared_suffix}.xml"
+        ref_config="${OTS_DIR}/etude_confs/i2b2_2006.conf"
     elif [[ "${SHORT_CORPUS}" == "2014_train" || \
-	"${SHORT_CORPUS}" == "2014_test" || \
-	"${SHORT_CORPUS}" == "2016_train" || \
-	"${SHORT_CORPUS}" == "2016_test" ]]; then
-	ref_dir=${CORPUS_ROOT}/../xml
-	ref_suffix="${shared_suffix}.xml"
-	ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
+        "${SHORT_CORPUS}" == "2014_test" || \
+        "${SHORT_CORPUS}" == "2016_train" || \
+        "${SHORT_CORPUS}" == "2016_test" ]]; then
+        ref_dir=${CORPUS_ROOT}/../xml
+        ref_suffix="${shared_suffix}.xml"
+        ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
     elif [[ "${SHORT_CORPUS}" == "2014_nTrain" || \
-	"${SHORT_CORPUS}" == "2014_nTest" || \
-	"${SHORT_CORPUS}" == "2016_nTrain" || \
-	"${SHORT_CORPUS}" == "2016_nTest" ]]; then
-	ref_dir=${CORPUS_ROOT}/../xml_normed
-	ref_suffix="${shared_suffix}.xml"
-	ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
+        "${SHORT_CORPUS}" == "2014_nTest" || \
+        "${SHORT_CORPUS}" == "2016_nTrain" || \
+        "${SHORT_CORPUS}" == "2016_nTest" ]]; then
+        ref_dir=${CORPUS_ROOT}/../xml_normed
+        ref_suffix="${shared_suffix}.xml"
+        ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
     elif [ "${SHORT_CORPUS}" == "mimic" ]; then
-	ref_dir=${CORPUS_ROOT}/../xml
+        ref_dir=${CORPUS_ROOT}/../xml
     fi
     if [[ "${SHORT_SYSTEM}" == "neuroner" ]]; then
-	sys_dir=`ls -dt ${OUTPUT_DIR}/${SHORT_CORPUS}_* | head -n 1`"/brat/test"
+        sys_dir=`ls -dt ${OUTPUT_DIR}/${SHORT_CORPUS}_* | head -n 1`"/brat/test"
     elif [[ "${SHORT_SYSTEM}" == "scrubber" ]]; then
-	sys_dir="${OUTPUT_DIR}/${SHORT_CORPUS}_brat"
+        sys_dir="${OUTPUT_DIR}/${SHORT_CORPUS}_brat"
     else
-	sys_dir="${OUTPUT_DIR}"
+        sys_dir="${OUTPUT_DIR}"
     fi
     ###################################
     print_section 3 "Annotation Counts"
     print_section 3 "ls ${ref_dir}/${ref_suffix}"
     print_section 3 "ls ${sys_dir}/${sys_suffix}"
     ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
-    	--print-counts \
-    	--no-metrics \
-    	--reference-input "${sys_dir}" \
-    	--reference-config "${sys_config}" \
-    	--by-type \
-    	--file-suffix "${sys_suffix}" \
-    	--pretty-print
+        --print-counts \
+        --no-metrics \
+        --reference-input "${sys_dir}" \
+        --reference-config "${sys_config}" \
+        --by-type \
+        --file-suffix "${sys_suffix}" \
+        --pretty-print
     ###################################
     print_section 3 "Evaluation"
     ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
-    	--reference-input "${ref_dir}" \
-    	--reference-config "${ref_config}" \
-    	--score-key "${score_key}" \
-    	--test-input "${sys_dir}" \
-    	--test-config "${sys_config}" \
-    	--collapse-all-patterns \
-    	--by-type \
-	--fuzzy-match-flags exact partial \
-    	--file-suffix "${ref_suffix}" "${sys_suffix}"
+        --reference-input "${ref_dir}" \
+        --reference-config "${ref_config}" \
+        --score-key "${score_key}" \
+        --test-input "${sys_dir}" \
+        --test-config "${sys_config}" \
+        --collapse-all-patterns \
+        --by-type \
+        --metrics TP FP FN Recall Precision F1 \
+        --fuzzy-match-flags exact partial \
+        --file-suffix "${ref_suffix}" "${sys_suffix}"
 }
 
 run_mist() {
@@ -157,7 +158,7 @@ run_scrubber() {
     fi
     ####
     run_etude \
-	".ann"
+        ".ann"
 }
 
 run_clinideid() {
@@ -179,7 +180,7 @@ run_clinideid() {
         1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     run_etude \
-	".filtered-system-output.xml"
+        ".filtered-system-output.xml"
 }
 
 run_neuroner() {
@@ -207,7 +208,7 @@ run_neuroner() {
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
     run_etude \
-	".ann"
+        ".ann"
 }
 
 run_philter_ucsf() {
@@ -250,7 +251,7 @@ run_philter_ucsf() {
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
     run_etude \
-	".xml"
+        ".xml"
 }
 
 run_physionet_deid() {
@@ -269,9 +270,9 @@ run_physionet_deid() {
     ( time for i in $CORPUS_ROOT/*.txt; do
         FILEBASE="$(basename $i .txt)"; \
             TMP_FILE="$TMP_CORPUS/$FILEBASE"; \
-    	    echo "START_OF_RECORD=1||||1||||" > $TMP_FILE.text; \
+            echo "START_OF_RECORD=1||||1||||" > $TMP_FILE.text; \
             cat $CORPUS_ROOT/$FILEBASE.txt >> $TMP_FILE.text; \
-    	    echo "||||END_OF_RECORD" >> $TMP_FILE.text; \
+            echo "||||END_OF_RECORD" >> $TMP_FILE.text; \
             perl deid.pl $TMP_FILE deid-output.config \
             1>> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
             2>> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr; \
@@ -282,7 +283,7 @@ run_physionet_deid() {
             done ) 2>> $ORG_FILE
     echo "    - The temporary folders created under '${TMP_CORPUS_ROOT}' can be deleted."
     run_etude \
-	".phi"
+        ".phi"
 }
 
 if [[ -n $CORPUS2014 ]]; then
