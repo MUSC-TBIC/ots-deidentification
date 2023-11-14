@@ -1,0 +1,3 @@
+ClinicalReports_dir = ${RESYNTH2014}/test/${RESYNTHVER}/txt
+ClinicalReports_files = .*\.txt
+nPHI_outdir = ${OUTPUT_DIR}/${SHORT_CORPUS}_nphi

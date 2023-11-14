@@ -1,4 +1,58 @@
 
+The Key Shell Scripts
+=====================
+
+This repository contains a collection of (mostly) shell scripts,
+configuration files, and other sundry to help run an array of
+de-identification systems against an array of de-identification
+annotated corpora.
+
+New corpora and new systems can be added by following the general
+pattern of the pre-existing examples.
+
+For instance, each system is run according to a function named for the
+de-identification system.  every system.  Adding a new system entails
+copying one of the pre-existing functions (e.g.,
+`run_physionet_deid()` or `run_mist()`) and adapting it to your new
+system.  
+
+This function, in turn, calls `run_etude()`.  As such, you'll likely
+need to add customizations to the arguments passed to ETUDE for
+scoring the new system.  Evaluation examples for ETUDE are provided to
+count and evaluation both "All Patterns" and just the "Names"
+categories.
+
+New corpora can be added by copying and adapting one of the large
+`for` loops near the bottom of the shell script (that is, starting
+with `if [[ -n $RESYNTH2014 ]]; then` would be modified if your new
+corpus was most similar to the resynthesized variant of the 2014
+corpus).
+
+The last adaptation that would need to done to add a new
+de-identification system or a new corpus would be to create a
+configuration file to tell ETUDE how to parse the files.  (If,
+however, you would prefer to use your own custom evaluation script,
+then you can simply replace the `run_etude()` function with your own
+custom call.)
+
+In theory, you will need to download the datasets that you wish to
+evaluation against, set up your environment variables (as described
+below), and install whichever systems that you want to benchmark (as
+linked to below).  Then you can run `deientification_tests.sh` and
+then review the scores generated in the log files.
+
+In practice, it is a good idea to stub out a sample corpus for each
+format that you want to test.  I do this by copying over 5-10 notes
+for each corpus and folder into a parallel folder.  It allows me to
+run the entire pipeline (similar to smoke testing) to make sure I have
+all my de-identification systems set up, ETUDE is working, all my
+configs are in the right place, etc.  Then I run the script on the
+full corpora.
+
+The other useful practice habit is to actually use the `run-all.sh`
+shell script to set your custom environment variables and log file(s)
+and run that instead of directly setting them in your shell.
+
 Environment Variables
 =====================
 
@@ -50,7 +104,8 @@ $MUSC_CORPUS
 The `OUTPUT_ROOT` is the base directory that we will write all system
 output and log files to. Within this folder, you'll find a
 subdirectory for each deidentification system and for logs. Within
-each system folder will be another subdirectory for each corpus split. A full run clocks in at just under 4G of diskspace.
+each system folder will be another subdirectory for each corpus
+split. A full run clocks in at just under 4G of diskspace.
 
 ```
 $OUTPUT_ROOT
@@ -132,8 +187,45 @@ $CORPUS_UTILS
 Installing Individual Components
 ================================
 
+CliniDeID
+---------
+
+See https://github.com/clinacuity/clinideid
+
+MIST
+----
+
+See https://mist-deid.sourceforge.net/docs_2_0_4/html/index.html
+
+Run using (v2.0.4).
+
+NeuroNER
+--------
+
+See https://github.com/Franck-Dernoncourt/NeuroNER
+
+Run using (commit 3817fea).
+
+Philter
+-------
+
+See https://github.com/BCHSI/philter-ucsf
+
+Run using (commit 780da99).
+
+PhysioNet deid
+--------------
+
+See https://physionet.org/content/deid/1.1/
+
+Run using (v 1.1).
+
 NLM Scrubber
 ------------
+
+See https://lhncbc.nlm.nih.gov/scrubber/download.html
+
+Run using (v.19.0403L Linux x86 64).
 
 ```
 wget https://scrubber.nlm.nih.gov/files/linux/scrubber.19.0403L.zip

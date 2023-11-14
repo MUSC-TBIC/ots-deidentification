@@ -5,6 +5,13 @@ if [[ -z $OTS_DIR ]]; then
     exit 0
 fi
 
+if [[ -z $CORPUS_UTILS ]]; then
+    if [[ -z $SCRUBBER_ROOT ]]; then
+        echo "The variable \$CORPUS_UTILS is not set and is required for evaluating NLM scrubber. The code base is available here:  https://github.com/MUSC-TBIC/corpus-utils.git"
+        exit 0
+    fi
+fi
+
 if [[ -z $ETUDE_DIR ]]; then
     echo "The variable \$ETUDE_DIR is not set"
     exit 0
@@ -19,6 +26,8 @@ fi
 
 if [[ -z $ORG_FILE ]]; then
     export ORG_FILE=/dev/null
+    ## TODO - it would be nice to check if the ORG_FILE can be written
+    ## to before proceeding and exit 0 if not.
 fi
 
 export LOG_DIR=${OUTPUT_ROOT}/logs
@@ -29,16 +38,26 @@ print_section() {
     header=$2
     cl_prefix=""
     org_prefix="* "
+    drawer_prefix="  "
     if [ $depth -eq 2 ]; then
         cl_prefix=" -- "
         org_prefix="** "
+        drawer_prefix="   "
     fi
     if [ $depth -eq 3 ]; then
         cl_prefix="    - "
         org_prefix="*** "
+        drawer_prefix="    "
+    fi
+    if [ $depth -eq 4 ]; then
+        cl_prefix="     - "
+        org_prefix="**** "
+        drawer_prefix="     "
     fi
     echo "${cl_prefix}$header"
     echo "${org_prefix}$header" >> ${ORG_FILE}
+    nowstamp=`date +"<%Y-%m-%d %a %H:%M>"`
+    echo "${drawer_prefix}$nowstamp" >> ${ORG_FILE}
 }
 
 run_etude() {
@@ -67,6 +86,10 @@ run_etude() {
         ref_dir=${CORPUS_ROOT}/../xml
         ref_suffix="${shared_suffix}.xml"
         ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
+    elif [[ "${SHORT_CORPUS}" == 2014_resynth* ]]; then
+        ref_dir=${CORPUS_ROOT}/../ref
+        ref_suffix="${shared_suffix}.ann"
+        ref_config="${OTS_DIR}/etude_confs/brat_2016.conf"
     elif [[ "${SHORT_CORPUS}" == "2014_nTrain" || \
         "${SHORT_CORPUS}" == "2014_nTest" || \
         "${SHORT_CORPUS}" == "2016_nTrain" || \
@@ -76,6 +99,10 @@ run_etude() {
         ref_config="${OTS_DIR}/etude_confs/i2b2_2016.conf"
     elif [ "${SHORT_CORPUS}" == "mimic" ]; then
         ref_dir=${CORPUS_ROOT}/../xml
+    elif [[ "${SHORT_CORPUS}" == musc_t* ]]; then
+        ref_dir=${CORPUS_ROOT}/../xmi
+        ref_suffix="${shared_suffix}.xmi"
+        ref_config="${OTS_DIR}/etude_confs/pii_musc_combined_webanno_xmi.conf"
     fi
     if [[ "${SHORT_SYSTEM}" == "neuroner" ]]; then
         sys_dir=`ls -dt ${OUTPUT_DIR}/${SHORT_CORPUS}_* | head -n 1`"/brat/test"
@@ -85,20 +112,37 @@ run_etude() {
         sys_dir="${OUTPUT_DIR}"
     fi
     ###################################
+    print_section 3 "ls ${ref_dir}/*${ref_suffix}"
+    print_section 3 "ls ${sys_dir}/*${sys_suffix}"
     print_section 3 "Annotation Counts"
-    print_section 3 "ls ${ref_dir}/${ref_suffix}"
-    print_section 3 "ls ${sys_dir}/${sys_suffix}"
-    ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
+    print_section 4 "All Patterns"
+    ( time ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
         --print-counts \
         --no-metrics \
         --reference-input "${sys_dir}" \
         --reference-config "${sys_config}" \
         --by-type \
         --file-suffix "${sys_suffix}" \
-        --pretty-print
+        --delim "|" \
+        --delim-prefix "|counts|allPatterns|${SHORT_SYSTEM}|${SHORT_CORPUS}|${RESYNTHVER}|" \
+        1>> $ORG_FILE ) 2>> $ORG_FILE
+    #################
+    print_section 4 "Parent Types"
+    ( time ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
+        --print-counts \
+        --no-metrics \
+        --reference-input "${sys_dir}" \
+        --reference-config "${sys_config}" \
+        --score-key "Parent" \
+        --by-type \
+        --file-suffix "${sys_suffix}" \
+        --delim "|" \
+        --delim-prefix "|counts|ParentType|${SHORT_SYSTEM}|${SHORT_CORPUS}|${RESYNTHVER}|" \
+        1>> $ORG_FILE ) 2>> $ORG_FILE
     ###################################
     print_section 3 "Evaluation"
-    ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
+    print_section 4 "All Patterns"
+    ( time ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
         --reference-input "${ref_dir}" \
         --reference-config "${ref_config}" \
         --score-key "${score_key}" \
@@ -106,17 +150,43 @@ run_etude() {
         --test-config "${sys_config}" \
         --collapse-all-patterns \
         --by-type \
-        --metrics TP FP FN Recall Precision F1 \
+        --metrics TP FP FN Precision Recall F1 \
         --fuzzy-match-flags exact partial \
-        --file-suffix "${ref_suffix}" "${sys_suffix}"
+        --file-suffix "${ref_suffix}" "${sys_suffix}" \
+        --delim "|" \
+        --delim-prefix "|eval|allPatterns|${SHORT_SYSTEM}|${SHORT_CORPUS}|${RESYNTHVER}|" \
+        1>> $ORG_FILE ) 2>> $ORG_FILE
+    #################
+    print_section 4 "Parent Types"
+    ( time ${ETUDE_BIN}/python3 ${ETUDE_DIR}/etude.py \
+        --reference-input "${ref_dir}" \
+        --reference-config "${ref_config}" \
+        --score-key "Parent" \
+        --test-input "${sys_dir}" \
+        --test-config "${sys_config}" \
+        --by-type \
+        --metrics TP FP FN Precision Recall F1 \
+        --fuzzy-match-flags exact partial \
+        --file-suffix "${ref_suffix}" "${sys_suffix}" \
+        --delim "|" \
+        --delim-prefix "|eval|ParentType|${SHORT_SYSTEM}|${SHORT_CORPUS}|${RESYNTHVER}|" \
+        1>> $ORG_FILE ) 2>> $ORG_FILE
 }
 
 run_mist() {
     SHORT_CORPUS=$1
     CORPUS_ROOT=$2
-    print_section 2 "MIST"
+    print_section 2 "MIST (${SHORT_CORPUS})"
     export SHORT_SYSTEM=mist
     cd ${MAT_PKG_HOME}
+    ## MIST can't handle non-ascii charactes so we need to filter our
+    ## input corpus to only contain files within the ascii range.
+    TMP_CORPUS_ROOT=/tmp/mist_tmp_corpus
+    export TMP_CORPUS=${TMP_CORPUS_ROOT}/${SHORT_CORPUS}
+    mkdir -p $TMP_CORPUS
+    ##for f in `grep --color='auto' -P -c "[\x80-\xFF]" ${CORPUS_ROOT}/*.txt | grep ":0" | cut -d ":" -f 1`; do \
+    for f in `file ${CORPUS_ROOT}/*.txt | grep "ASCII" | cut -d ":" -f 1`; do \
+        cp $f $TMP_CORPUS/.;done
     export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}/${SHORT_CORPUS}
     mkdir -p ${OUTPUT_DIR}
     ( time ${MAT_PKG_HOME}/bin/MATEngine \
@@ -124,7 +194,7 @@ run_mist() {
         --workflow Demo \
         --steps 'zone,tag' \
         --tagger_local \
-        --input_dir ${CORPUS_ROOT} \
+        --input_dir ${TMP_CORPUS} \
         --input_file_re ".*[.]txt" \
         --input_file_type raw \
         --output_dir ${OUTPUT_DIR} \
@@ -132,19 +202,29 @@ run_mist() {
         --output_fsuff ".json" \
         1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
+    ####
+    run_etude \
+        ".txt.json"
 }
 
 run_scrubber() {
-    SHORT_CORPUS=$1
-    CORPUS_ROOT=$2
+    export SHORT_CORPUS=$1
+    export CORPUS_ROOT=$2
     CORPUS_CONFIG=$3
-    print_section 2 "NLM Scrubber"
+    print_section 2 "NLM Scrubber (${SHORT_CORPUS})"
     export SHORT_SYSTEM=scrubber
     cd ${SCRUBBER_ROOT}
     export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}
     mkdir -p ${OUTPUT_DIR}
+    nlm_config_template=$OTS_DIR/nlm-scrubber/nlm-scrubber.conf.TEMPLATE
+    nlm_config=$OUTPUT_DIR/${SHORT_CORPUS}.conf
+    cat ${nlm_config_template} | envsubst \
+            > ${nlm_config}
+    else
+        echo "No match!!!!"
+    fi
     ( time ./scrubber.19.0403.lnx \
-        $OTS_DIR/nlm-scrubber/${CORPUS_CONFIG} \
+        $nlm_config \
         1> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stdout \
         2> ${LOG_DIR}/${SHORT_SYSTEM}_${SHORT_CORPUS}.stderr ) 2>> $ORG_FILE
     if [[ -z $CORPUS_UTILS ]]; then
@@ -214,7 +294,7 @@ run_neuroner() {
 run_philter_ucsf() {
     SHORT_CORPUS=$1
     CORPUS_ROOT=$2
-    print_section 2 "UCSF's Philter"
+    print_section 2 "UCSF's Philter (${SHORT_CORPUS})"
     export SHORT_SYSTEM=philter
     cd ${PHILTER_ROOT}
     export OUTPUT_DIR=${OUTPUT_ROOT}/${SHORT_SYSTEM}/${SHORT_CORPUS}
@@ -285,6 +365,85 @@ run_physionet_deid() {
     run_etude \
         ".phi"
 }
+
+if [[ -n $RESYNTH2014 ]]; then
+    print_section 1 "Resynthesized 2014 i2b2 Corpus"
+    for resynth_dir in aframer_v003 \
+                       en-US_v003 \
+                       latinx_v003 \
+                       aframer_v002 \
+                       en-US_v002 \
+                       latinx_v002 ;do
+        ## We need to export this value for envsubst to use later
+        export RESYNTHVER=${resynth_dir}
+        ####
+        ## Clinacuity's CliniDeID
+        ####
+        if [[ -n $CLINIDEID_ROOT ]]; then
+            ## Original Corpora
+            run_clinideid \
+                2014_resynth_${RESYNTHVER} \
+                $RESYNTH2014/test/${RESYNTHVER}/txt \
+                beyond
+        else
+            print_section 2 "Skipping Clinacuity's CliniDeID"
+        fi
+        ####
+        ## MIST
+        ####
+        if [[ -n $MAT_PKG_HOME ]]; then
+            run_mist \
+                2014_resynth_${RESYNTHVER} \
+                $RESYNTH2014/test/${RESYNTHVER}/txt
+        else
+            print_section 2 "Skipping MIST"
+        fi
+        ####
+        ## NLM's Scrubber
+        ####
+        if [[ -n $SCRUBBER_ROOT ]]; then
+            ## Original Corpora
+            run_scrubber \
+                2014_resynth_${RESYNTHVER} \
+                $RESYNTH2014/test/${RESYNTHVER}/txt \
+                i2b2_2014_resynth.conf
+        else
+            print_section 2 "Skipping NLM Scrubber"
+        fi
+        ####
+        ## NeuroNER
+        ####
+        if [[ -n $NEURONER_BIN ]] && [[ -n $NEURONER_ROOT ]]; then
+            run_neuroner \
+                2014_resynth_${RESYNTHVER} \
+                $RESYNTH2014/test/${RESYNTHVER}/txt
+        else
+            print_section 2 "Skipping NeuroNER"
+        fi
+        ####
+        ## PhysioNet's deid
+        ####
+        if [[ -n $PHYSIONET_DEID_ROOT ]]; then
+            run_physionet_deid \
+                2014_resynth_${RESYNTHVER} \
+                $RESYNTH2014/test/${RESYNTHVER}/txt
+        else
+            print_section 2 "Skipping PhysioNet's deid"
+        fi
+        ####
+        ## UCSF's Philter
+        ####
+        if [[ -n $PHILTER_ROOT ]]; then
+            run_philter_ucsf \
+                2014_resynth_${RESYNTHVER} \
+                $RESYNTH2014/test/${RESYNTHVER}/txt
+        else
+            print_section 2 "Skipping UCSF's Philter"
+        fi
+    done
+else
+    print_section 1 "Skipping Resynthesized 2014 i2b2 Corpus"
+fi
 
 if [[ -n $CORPUS2014 ]]; then
     print_section 1 "2014 i2b2 Corpus"
